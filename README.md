@@ -4,6 +4,8 @@
 >
 > 设计理念受 Claude Code 的 `webnovel-writing` skill（[Tomsawyerhu/Chinese-WebNovel-Skill](https://github.com/Tomsawyerhu/Chinese-WebNovel-Skill)）启发，但为**独立编写的工作流系统**（本仓库不包含该 skill 的任何语料、脚本或模块文件）。适用于多种长篇连载题材，**不绑定任何特定题材**。
 
+> 👉 **第一次使用？先看 [QUICKSTART.md](./QUICKSTART.md)** —— 一份可执行清单：建目录 + 复制模板 + 填几样必填项，就能让 AI 用这套系统写第一章。
+
 ---
 
 ## 这是什么 / 解决什么问题
