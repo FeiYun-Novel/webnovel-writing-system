@@ -1,6 +1,6 @@
-# 网文写作系统 · Webnovel Writing System
+**🌐 Language：中文 ｜ [English](./README.en.md)**
 
-> **English version: [README.en.md](./README.en.md)** · 这是中文版。
+# 网文写作系统 · Webnovel Writing System
 
 > 一套**跨会话的「AI 写小说」工程系统**——把「写作」当成一个可持续迭代的工程流程来做：跨会话状态、每章 SOP、分阶段检查表、可复用写作技法库、上下文水位管理、多子代理并行自检。
 >

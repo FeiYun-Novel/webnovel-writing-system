@@ -1,6 +1,6 @@
-# Webnovel Writing System · 网文写作系统
+**🌐 Language: [中文](./README.md) ｜ English**
 
-> **中文版：[README.md](./README.md)** · This is the English version.
+# Webnovel Writing System · 网文写作系统
 
 > A **cross-session engineering system for "AI-assisted novel writing"** — treating "writing" as a sustainable, iterative engineering process: cross-session state, per-chapter SOP, staged checklists, a reusable craft-technique library, context-budget management, and parallel multi-agent self-review.
 >
