@@ -19,6 +19,7 @@ consistency_gate.py — 状态账本一致性机检（每章封存/阶段5收尾
   ⚠️ 3. 台词引用核对：账本里引用的正文台词「…」，在 正文/ 全库 grep 不到 = 疑似抄旧
         （账本记台词要么贴原句、要么去引号写转述——改写了还挂引号是最危险漂移）
   ⚠️ 4. 角色"当前位置"新鲜度：人物状态各角色的章号落后最新章 2 章以上 = 过期快照
+        （逐节匹配防串角色；缺字段报警；字段含"未再登场"标记的角色不催更新）
   🛑 5. 指针完整性：反引号/Markdown链接/"见 xxx.md"引用的文件必须真实存在
   🛑 6. 水位：累积状态文件总字符（阈值见 CONFIG），防上下文膨胀"失忆"
   🛑 7. 文件名/H1 全库抽查：正文/ 每章过命名规则
@@ -160,17 +161,32 @@ def main(quiet=False):
         oks.append('账本引用的台词均能在正文中找到')
 
     # ---- 4. 角色"当前位置"新鲜度（警告级） ----
+    # 逐节匹配（切到下一个 ### 为止）——跨节的贪婪匹配会在某节缺字段时把下一个角色的位置错归到它头上
+    NO_LOC_OK = ('系统',)  # 无实体位置的角色（金手指/系统类），按你的书配置
     ps_p = os.path.join(SS, '人物状态.md')
     if exists(ps_p):
-        stale4 = []
-        for m in re.finditer(r'### (\S+?)（[^\n]*\n(?:.*\n)*?- \*\*当前位置：\*\* ([^\n]*)', load(ps_p)):
-            cm = re.search(r'第(\d+)章', m.group(2))
+        stale4, noloc4 = [], []
+        for sec in re.split(r'\n(?=### )', load(ps_p)):
+            hm = re.match(r'### (\S+?)（', sec)
+            if not hm:
+                continue
+            name = hm.group(1)
+            lm = re.search(r'- \*\*当前位置：\*\* ([^\n]*)', sec)
+            if not lm:
+                if name not in NO_LOC_OK:
+                    noloc4.append(name)
+                continue
+            loc = lm.group(1)
+            if '未再登场' in loc or '未登场' in loc:  # 近期没戏份的角色不催更新（字段里标注末次章号+该标记即可）
+                continue
+            cm = re.search(r'第(\d+)章', loc)
             if cm and latest - int(cm.group(1)) > 2:
-                stale4.append(f'{m.group(1)} 当前位置停在第{cm.group(1)}章（最新第{latest}章）')
-        if stale4:
+                stale4.append(f'{name} 当前位置停在第{cm.group(1)}章（最新第{latest}章）')
+        if stale4 or noloc4:
             warns += ['位置过期: ' + s for s in stale4]
+            warns += [f'缺"当前位置"字段: {n}' for n in noloc4]
         else:
-            oks.append('各角色"当前位置"新鲜（落后≤2章或未登场）')
+            oks.append('各角色"当前位置"新鲜（落后≤2章或标记未再登场）且字段齐全')
 
     # ---- 5. 指针完整性 ----
     dangling = []

@@ -89,6 +89,16 @@ webnovel-writing-system/
 
 ## 更新日志
 
+### v2.2（2026-07）——机制升级：分流器 + 两段式封存 + 状态账本硬化（经两轮双 AI 交叉审计验证）
+
+- **新增 `写作技法/技法分流器.md`（⭐本版核心）**：技法库超过十份后"凭感觉挑卡"会退化成"永远只翻最熟的两份"。分流器把选卡变成机械判定：每章固定二问（谁被蒙在鼓里／读者推进了什么）＋逐场过判定问题清单，命中即入清单、路由精确到节。阶段2 技法清单步骤同步改为"跑分流器四小步"。
+- **封存点改两段式**：原"过自检即封存"与"交用户过目"两条规则打架（用户要求改时 AI 同时收到"必须改"和"禁止改"）。现统一为：自检全过＝**候选定稿**（AI 停止自我找茬），**用户认可＋阶段5状态同步完成＝正式封存**（此后 forward-only）。全部入口文件同步（实证：终审时被外部 AI 审计发现三处入口残留旧表述——改规则要 grep 全库，别只改权威源）。
+- **状态账本硬化（consistency_gate.py）**："当前位置"检查改逐节匹配（原正则会跨节把别的角色的位置错归到缺字段的角色头上）；缺字段报警；新增"未再登场"标记让没戏份的角色不被误催。人物状态模板补充位置字段维护要点（实证：位置字段最容易停在角色上次大事件那章，伤势/装备等相邻活字段要一起刷新）。
+- **水位口径统一**：文档命令与机检脚本原本一个含空白一个去空白，差 3-5%，卡在灯色边界会给相反指令；统一为去空白口径。基线记录改"当前基线单列真值＋历史时间序"写法。
+- **阶段2 新增"本章例外与豁免"栏**：本章获批的特殊写法集中列在计划里，写中只认这张卡；**阶段4 新增对应验收条**核对逐场兑现（没有验收回路的例外栏只是摆设）。
+- **文风样本卡模板新增 S0 总基调层与优先级判定**：样本 ＞ S0——样本是作者亲口认证的原话，AI 概括的总基调只作空白场景兜底，不构成改写样本的理由。
+- **过场章审稿第三路扩容**：改为"本章主角色一致性组"，纯反派章/纯配角过场不再无组可用。
+
 ### v2.1（2026-07）
 - **阶段2「爽点门槛四答」消音自查新增第 5 类**：认知功劳被工具代劳——金手指/系统/军师类角色把关键推理结论直接讲给主角听，主角只负责提问和惊讶，读者感受到的是"工具很聪明"而不是"主角很聪明"。正确做法：工具只给原始信息/数据，推理结论由主角自己拼出来。（实证：审稿子代理曾指出某章"男主自己的算计能力被系统的全知代劳了"，属于消音四类之外的第五种常见失误。）
 
@@ -207,6 +217,16 @@ webnovel-writing-system/
 The system occasionally uses abstract examples to illustrate how a mechanism plays out in practice (e.g., a "protagonist-exclusive information mechanic" could be precognition / mind-reading / a status panel / involuntary information leakage; a "character-exclusive reaction trait" could be a tic, a catchphrase, a change in eye color, etc.). These are all **optional illustrations**, not a prerequisite for using this system, and they don't point to any specific published work — you're free to swap in whatever fits your own worldbuilding. See `EXAMPLE.md` for details.
 
 ## Changelog
+
+### v2.2 (2026-07) — Mechanism upgrade: technique router + two-stage sealing + state-ledger hardening (validated by two rounds of dual-AI cross-audit)
+
+- **New `写作技法/技法分流器.md` (technique router — the headline of this release)**: once a technique library grows past ~10 cards, "picking by feel" degenerates into "always opening the two most familiar cards." The router turns card selection into mechanical judgment: two fixed per-chapter questions (who is being kept in the dark / what does the reader advance) + a per-scene checklist of routing questions — hits go on the chapter's technique list, routed down to the specific section of a card. Stage 2's technique-list step now runs the router.
+- **Sealing is now two-stage**: the old "passing self-review = sealed" rule contradicted "show the draft to the user first" (if the user requested edits, the AI received both "must change" and "must not change"). Now: all checks passed = **candidate final** (the AI stops self-nitpicking); **user approval + Stage 5 state sync = officially sealed** (forward-only from then on). All entry-point files updated in sync (lesson learned: an external AI audit caught three entry points still carrying the old wording — when changing a rule, grep the whole repo, don't just edit the authoritative source).
+- **State-ledger hardening (`consistency_gate.py`)**: the "current location" freshness check now matches section-by-section (the old greedy regex could cross into the next character's section and misattribute locations when a field was missing); missing fields now warn; a "not recently on stage" marker stops the gate from nagging about characters with no recent scenes. The character-state template documents the maintenance pitfall (location fields tend to freeze at the character's last big event; adjacent live fields like injuries/equipment must be refreshed together).
+- **Watermark counting unified**: the doc command and the machine gate previously counted with/without whitespace respectively — a 3-5% gap that gives contradictory light colors right at a threshold; both now use the whitespace-stripped count. Baseline records switched to "single current-baseline line as the only truth + history in strict chronological order."
+- **Stage 2 gains a per-chapter "exceptions & exemptions" panel** (approved special treatments listed in the plan; during writing only this card counts) — **and Stage 4 gains the matching verification item** (an exceptions panel without a verification loop is decoration).
+- **Style-sample template gains an S0 "overall register" layer with an explicit priority ruling**: samples > S0 — samples are the author's own certified words; an AI-summarized register only backfills scenes with no matching sample and never justifies rewriting one.
+- **Transitional-chapter review lane widened**: the third lane is now "this chapter's main-character consistency group," so villain-POV or side-character chapters are no longer left without an applicable lane.
 
 ### v2.1 (2026-07)
 - **Added a 5th failure category to Stage 2's "payoff-threshold four-question" desensitization self-check**: cognitive credit outsourced to a tool — a cheat-mechanic / system / strategist-type character hands the key deductive conclusion straight to the protagonist, leaving the protagonist to just ask questions and react with surprise; the reader ends up feeling that "the tool is clever," not that "the protagonist is clever." Correct approach: the tool supplies only raw information/data, and the protagonist works out the conclusion themselves. (Evidence: a review sub-agent once flagged a chapter where "the protagonist's own scheming ability had been outsourced to the system's omniscience" — a fifth common failure mode beyond the original four desensitization categories.)
