@@ -3,7 +3,7 @@
 
 # 网文写作系统 · Webnovel Writing System
 
-> 一套**跨会话的「AI 写小说」工程系统**——把「写作」当成一个可持续迭代的工程流程来做：跨会话状态、每章 SOP、分阶段检查表、可复用写作技法库、上下文水位管理、多子代理并行自检。
+> 一套**跨会话的「AI 写小说」工程系统**——把「写作」当成一个可持续迭代的工程流程来做：跨会话状态、每章 SOP、分阶段检查表、上下文水位管理，以及写完初稿后的跨提供方独立审稿。
 >
 > 设计理念受 Claude Code 的 `webnovel-writing` skill（[Tomsawyerhu/Chinese-WebNovel-Skill](https://github.com/Tomsawyerhu/Chinese-WebNovel-Skill)）启发，但为**独立编写的工作流系统**（本仓库不包含该 skill 的任何语料、脚本或模块文件）。适用于多种长篇连载题材，**不绑定任何特定题材**。
 
@@ -27,7 +27,7 @@
 
 - **文风机检闸门 `scripts/style_gate.py`**（写后必跑）：破折号/对照句式/明喻密度/单句成段/段内排比/符号配对/文件名一致等通用句式硬规则脚本化，另有禁用词/敏感词两个可配置槽位。立项实证：给 AI 立"破折号≤5"的文字规则，连续三章写了 18/9/6 处、多路 AI 审稿全放过——**LLM 靠读感数数不可靠，数值规则一律脚本核验**。
 - **账本机检闸门 `scripts/consistency_gate.py`**（封存后必跑）：章号一致/伏笔表自洽/账本引语回正文核对/状态快照新鲜度/悬空指针/上下文水位七项。立项实证：状态文件手抄正文台词，抄错一个字能潜伏几十章；**手抄必漂移，一致性交给机器**。
-- **分级审稿**：章计划里定"章型"——关键章全路数子代理审、过场章 3 路＋每 3 章一致性巡检兜底，省约三分之一审稿开销而不裂质量底线。
+- **风险分级审稿**：完整初稿和机检通过后，固定运行“读者体验＋写法与 AI 痕迹”，其他路线按本章触碰风险追加；每 3 章用一次轻量一致性巡检兜底。
 - **单源+指针制**：每条规则/事实的全文只存一个权威源，其他文件一律一行指针——从机制上消灭"改一处忘三处"。
 - **文件三层模型**：活账本（强一致·机检红项）/ 活索引（警告级）/ 历史归档（排除）——覆盖面和维护成本的平衡点。
 
@@ -36,21 +36,22 @@
 | 理念 | 说明 |
 |---|---|
 | **状态即文件（Cross-session state as files）** | 章节进度、伏笔、人物状态、已发生事件、未解决问题全部存 Markdown。冷启动只读文件，不靠对话记忆。 |
-| **Forward-only 封章** | 一章过了自检三关（结构/设定/历史错题）= 封存，不回头改。用「自检通过」代替「还不满意」，避免无限返工。 |
+| **两段式封章** | 适用检查通过只算候选定稿；用户认可并完成状态同步后才正式封存，之后 forward-only，不回头改。 |
 | **写前查技法，不是写完补** | 动笔前先把本章拆成几个场景，对照技法库给每场点名具体招式，产出「本章技法清单」——专治 AI 味。 |
 | **上下文水位管理** | 三大累积文件定期量字数、报绿/黄/红灯，超阈值就归档，防止上下文膨胀拖垮质量与成本。 |
-| **多子代理并行自检** | 关键章封存前，按「角色 + 维度」拆多个子 Agent 并行审稿，主 Agent 汇总去重定稿。见下方⭐。 |
+| **跨提供方独立审稿（v2.3）** | 完整初稿和机检通过后，由不同于主笔提供方的模型审稿；固定两路、风险追加、认领去重、两轮封顶。 |
 | **机检闸门（v1.1 新增）** | 数值可判定的风格规则（破折号/对照句/明喻密度/单句段/排比）一律脚本核验——LLM 靠读感数数不可靠，多路审稿代理都可能读不出超标。写后第一步跑 `story_system/scripts/style_gate.py`，全绿才派审稿。 |
 | **文风样本卡（v1.1 新增）** | 规则告诉模型"别写什么"，样本告诉模型"写成什么样"。把作者点头认可的正文选段按场景类型归档，写场景前先对同类样本——**换模型/换工具时靠它对齐文风**（抽象规则跨模型损耗大，具体范文几乎无损）。 |
 
-## ⭐ 头牌特性：多子代理并行自检
+## ⭐ 头牌特性：跨提供方独立审稿
 
-单个 AI 审一整章容易「注意力稀释」、漏检。这套系统在关键章封存前，把审稿拆成**多路子 Agent 并行**（详见 `story_system/检查表/阶段4-写后自检.md`）：
+同一模型既写又审，容易重复自己的盲区。v2.3 把写后检查改为**主笔提供方与审稿提供方隔离**，并把成本控制写进流程（详见 `story_system/检查表/跨模型写后审稿SOP.md`）：
 
-- **按「角色 + 维度」拆路**：感情线/配角组、主角+(可选)系统组、写法/AI味组、剧情/设定组、**读者视角组**。
-- **读者视角组**最特别：刻意**不给它任何设定文件**，只给本章正文 + 上一章末尾，让它以「第一次看这本书的读者」身份找——哪里逻辑跳跃、哪里作者旁白替读者下了结论、哪句读着卡壳。
-- 每路用 **schema 强制结构化输出**（severity / location / issue / suggestion）；**多路命中同一处 = 高置信**，优先改。
-- 机械项（错别字/标点计数/字数核对）主 Agent 自己 grep，不浪费 Agent。
+- **固定两路**：读者体验、写法与 AI 痕迹每章必跑。
+- **风险追加**：人物、设定伏笔、剧情因果、战斗等级等只在本章实际触碰时启动。
+- **覆盖认领**：脚本先领机械项，审稿路线领专项，主笔只补空缺，避免重复通读。
+- **硬伤三问**：有据、必修、非故意同时成立才算硬伤；证据不足进入待确认。
+- **输出限额与两轮封顶**：按根因去重，限制低收益意见；第二轮后仍有争议就交用户裁决。
 
 ## 目录结构
 
@@ -64,6 +65,7 @@ webnovel-writing-system/
 │   ├── README.md          # 冷启动读序、两层角色结构说明
 │   ├── 写作流程.md         # 每章 SOP（阶段 0→5）
 │   ├── 检查表/            # 每个阶段一份逐条核对清单（阶段0~5）
+│   │   └── 跨模型写后审稿SOP.md # ★ v2.3 跨提供方审稿、认领、限额与复核阈值
 │   ├── 章节自检清单.md     # 写后自检总清单（结构六项 / 设定伏笔 / 历史错题）
 │   ├── 上下文管理.md       # 上下文水位与归档策略
 │   ├── 写作风格指南.md     # 腔调/大白话/信息可见性约定（模板版）
@@ -79,7 +81,7 @@ webnovel-writing-system/
 1. **Clone 下来**，把 `story_system/` 和 `CLAUDE.md`、`00_AI_WIKI/` 放进你自己的小说项目文件夹。
 2. **填槽位**：参考 `EXAMPLE.md`，把「主角 / 反派 / 感情线角色 / 势力」等通用槽位换成你自己的人物设定；用 `templates/` 和 `story_system/模板/` 的空白模板建你项目的活文档。
 3. **冷启动**：新对话第一句话让 AI 读 `story_system/README.md`，按读序加载状态。
-4. **每章照 SOP 走**：写前读状态 + 查技法库 → 出本章计划 → 写正文 → 阶段4 多路自检 → 更新活文档。逐阶段对照 `检查表/`。
+4. **每章照 SOP 走**：写前读状态 + 查技法库 → 出本章计划 → 写正文 → 阶段4 跨提供方审稿 → 更新活文档。逐阶段对照 `检查表/`。
 
 > **关于写作技法库：** 本仓库提供的是技法库的**框架**——一张"什么场景翻哪份"的路由表 + 每类技法的**占位指引**（讲清这份该放什么方向、什么内容），但**不含具体招式正文**（那是各人自己积累的手艺，需自行填充）。怎么建见 `story_system/写作技法/如何建立你自己的技法库.md`。角色、设定、题材相关的东西也都做成了**空白槽位**，填成你自己的即可。
 
@@ -88,6 +90,14 @@ webnovel-writing-system/
 系统里偶尔用抽象举例来演示某些机制怎么落地（比如「主角专属信息机制」可以是预知/读心/面板/信息外泄等，「角色专属反应特征」可以是小动作/口头禅/瞳色变化等）。这些都是**可选示例**，不是使用本系统的前提，也不指向任何具体作品——你完全可以换成任何你自己的设定。详见 `EXAMPLE.md`。
 
 ## 更新日志
+
+### v2.3（2026-07）——跨提供方写后审稿
+
+- 审稿必须等完整初稿与机检通过后启动，且审稿模型提供方不同于主笔提供方。
+- 固定“读者体验＋写法与 AI 痕迹”两路，人物、设定、因果、战斗等路线按风险追加。
+- 引入覆盖认领制、硬伤三问、按根因计数的 findings 上限、三分之一重审阈值和两轮封顶。
+- 每三章运行一次只看新增变化的轻量一致性巡检。
+- 新增 `PUBLICATION_BOUNDARY.md`，明确本仓库是唯一 Public 架构发布仓库，不接收任何作品内容。
 
 ### v2.2（2026-07）——机制升级：分流器 + 两段式封存 + 状态账本硬化（经两轮双 AI 交叉审计验证）
 
@@ -132,7 +142,7 @@ webnovel-writing-system/
 
 # Webnovel Writing System · 网文写作系统
 
-> A **cross-session engineering system for "AI-assisted novel writing"** — treating "writing" as a sustainable, iterative engineering process: cross-session state, per-chapter SOP, staged checklists, a reusable craft-technique library, context-budget management, and parallel multi-agent self-review.
+> A **cross-session engineering system for "AI-assisted novel writing"** — treating "writing" as a sustainable, iterative engineering process: cross-session state, per-chapter SOP, staged checklists, context-budget management, and post-draft independent review by a different model provider.
 >
 > Design inspired by Claude Code's `webnovel-writing` skill ([Tomsawyerhu/Chinese-WebNovel-Skill](https://github.com/Tomsawyerhu/Chinese-WebNovel-Skill)), but this is an **independently written workflow system** (this repo contains none of that skill's corpus, scripts, or module files). Works across long-form serialized genres — **not tied to any specific genre**.
 
@@ -156,7 +166,7 @@ After a round of engineering hardening driven by multi-AI cross-auditing, v2 add
 
 - **Style machine-check gate `scripts/style_gate.py`** (must run after writing): hard-codes generic prose-pattern rules as a script — em-dash frequency, "not-A-but-B" contrast sentences, simile density, single-sentence-paragraph ratio, in-paragraph parallelism, bracket-pairing, filename consistency — plus two configurable slots for banned/sensitive words. Founding evidence: telling the AI "no more than 5 em-dashes" as a plain-text rule still produced 18/9/6 violations across three consecutive chapters, and multiple AI reviewers all missed it — **LLMs can't reliably count by "feel"; numeric rules must be verified by script.**
 - **Ledger machine-check gate `scripts/consistency_gate.py`** (must run after archiving): seven checks — chapter-number consistency, foreshadowing-table self-consistency, ledger quotes matching the actual prose, state-snapshot freshness, dangling pointers, and context-budget level. Founding evidence: a state file once hand-copied a line of dialogue from the prose and got one character wrong — that error could lie dormant for dozens of chapters; **hand-copying inevitably drifts, so consistency-checking is handed off to a machine.**
-- **Tiered review**: the chapter plan now declares a "chapter type" — key chapters get the full multi-pass agent review, transitional chapters get a lean 3-pass review plus a consistency sweep every 3 chapters as a safety net — cutting review cost by roughly a third without breaking the quality floor.
+- **Risk-tiered review**: after the full draft and machine checks pass, reader experience and AI-flavor review always run; character, continuity, causality, and combat routes are added only when the chapter actually touches those risks. A lightweight consistency sweep runs every 3 chapters.
 - **Single source + pointer discipline**: every rule/fact has exactly one authoritative full-text source; every other file holds only a one-line pointer to it — structurally eliminating the "fixed it in one place, forgot the other three" failure mode.
 - **Three-tier file model**: living ledger (strict consistency, machine-check red-flag level) / living index (warning level) / historical archive (excluded from active reads) — a deliberate balance between coverage and maintenance cost.
 
@@ -165,21 +175,22 @@ After a round of engineering hardening driven by multi-AI cross-auditing, v2 add
 | Principle | Description |
 |---|---|
 | **Cross-session state as files** | Chapter progress, foreshadowing, character states, event log, and open questions all live in Markdown. A cold start only reads files — it never relies on conversation memory. |
-| **Forward-only sealing** | Once a chapter clears the three-gate self-review (structure / worldbuilding / recurring-mistake history), it's sealed and never revisited. "Passed self-review" replaces "still not satisfied," preventing infinite rework loops. |
+| **Two-stage sealing** | Passing all applicable checks makes a chapter a candidate final; it is officially sealed only after user approval and state synchronization, then becomes forward-only. |
 | **Look up technique before writing, not patch it in after** | Before drafting, break the chapter into scenes and match each one to a specific move from the technique library, producing a "this chapter's technique checklist" — the direct antidote to AI-flavored prose. |
 | **Context-budget management** | Three cumulative files are periodically measured by character count and flagged green/yellow/red; once a threshold is crossed, older content gets archived — preventing context bloat from degrading quality and inflating cost. |
-| **Parallel multi-agent self-review** | Before a key chapter is sealed, review is split across multiple sub-agents by "role + dimension," running in parallel; the main agent merges, deduplicates, and finalizes. See ⭐ below. |
+| **Cross-provider independent review (v2.3)** | After a complete draft passes machine checks, a model from a different provider reviews it; two fixed routes, risk-triggered additions, claimed coverage, and a two-round cap. |
 | **Machine-check gate (added in v1.1)** | Any style rule that can be judged numerically (em-dashes, contrast sentences, simile density, single-sentence paragraphs, parallelism) is verified by script — LLMs are unreliable at counting by feel, and even multi-pass review agents can miss an overage. Run `story_system/scripts/style_gate.py` as the first step after writing; only dispatch review agents once every check is green. |
 | **Style sample cards (added in v1.1)** | Rules tell the model "what not to write"; samples show it "what good looks like." File author-approved prose excerpts by scene type, and reference the matching samples before writing a similar scene — **this is what keeps style consistent when you switch models or tools** (abstract rules degrade a lot across models; concrete reference prose barely degrades at all). |
 
-## ⭐ Headline Feature: Parallel Multi-Agent Self-Review
+## ⭐ Headline Feature: Cross-Provider Independent Review
 
-A single AI reviewing an entire chapter is prone to "attention dilution" and missed issues. Before a key chapter is sealed, this system splits the review into **multiple parallel sub-agents** (full details in `story_system/检查表/阶段4-写后自检.md`):
+A model reviewing its own draft can repeat the same blind spots. v2.3 separates the lead writer's provider from the review provider and builds cost control into the process (full details in `story_system/检查表/跨模型写后审稿SOP.md`):
 
-- **Split by "role + dimension"**: a romance/supporting-cast group, a protagonist + (optional) system-mechanic group, a craft/AI-flavor group, a plot/worldbuilding-consistency group, and a **reader's-eye-view group**.
-- The **reader's-eye-view group** is the most distinctive: it is deliberately given **no worldbuilding files at all** — only this chapter's prose plus the tail of the previous chapter — and asked to review as "a reader seeing this book for the first time": where's the logic jump, where does the narrator draw a conclusion the reader should have drawn themselves, which line makes a reader stumble.
-- Every pass is forced into **structured output via schema** (severity / location / issue / suggestion); **when multiple passes flag the same spot, that's high-confidence** and gets fixed first.
-- Mechanical items (typos, punctuation counts, word-count checks) are grepped by the main agent directly — no need to burn an agent call on them.
+- **Two fixed routes**: reader experience, and craft/AI-flavor.
+- **Risk-triggered routes**: character, continuity, causality, and combat checks run only when touched.
+- **Claimed coverage**: scripts own mechanical checks, review routes own their specialties, and the lead fills only uncovered gaps.
+- **Evidence-gated severity**: a critical defect must be evidenced, mandatory to fix, and not an intentional narrative choice.
+- **Capped findings and two rounds**: deduplicate by root cause, suppress low-value repetition, and hand unresolved disputes to the user after round two.
 
 ## Directory Structure
 
@@ -193,6 +204,7 @@ webnovel-writing-system/
 │   ├── README.md            # Cold-start read order, explanation of the two-tier role structure
 │   ├── 写作流程.md           # Per-chapter SOP (Stage 0 → 5)
 │   ├── 检查表/              # One checklist per stage (Stage 0–5)
+│   │   └── 跨模型写后审稿SOP.md # ★ v2.3 cross-provider review, coverage claims, limits, and re-review thresholds
 │   ├── 章节自检清单.md       # Post-writing master checklist (6 structural items / worldbuilding & foreshadowing / recurring-mistake history)
 │   ├── 上下文管理.md         # Context-budget levels and archiving policy
 │   ├── 写作风格指南.md       # Voice / plain-language / information-visibility conventions (template version)
@@ -208,7 +220,7 @@ webnovel-writing-system/
 1. **Clone the repo**, then drop `story_system/`, `CLAUDE.md`, and `00_AI_WIKI/` into your own novel project folder.
 2. **Fill in the slots**: use `EXAMPLE.md` as a reference and replace generic slots like "protagonist / antagonist / romance-line characters / factions" with your own cast; use the blank templates in `templates/` and `story_system/模板/` to build your project's living documents.
 3. **Cold start**: in a new conversation, have the AI read `story_system/README.md` first and load state in the documented read order.
-4. **Follow the SOP for every chapter**: read state + look up technique references → produce this chapter's plan → write the prose → run the Stage-4 multi-pass self-review → update the living documents. Cross-check each stage against `检查表/`.
+4. **Follow the SOP for every chapter**: read state + look up technique references → produce this chapter's plan → write the prose → run the Stage-4 cross-provider review → update the living documents. Cross-check each stage against `检查表/`.
 
 > **On the technique library:** what this repo provides is the **framework** of the technique library — a routing table ("which scene type maps to which file") plus **placeholder guidance** per category (what direction and content each file should hold), but **not the actual move write-ups themselves** (that's craft you accumulate yourself and fill in). See `story_system/写作技法/如何建立你自己的技法库.md` for how to build it. Characters, worldbuilding, and genre-specific content are all **blank slots** — fill them in with your own.
 
@@ -217,6 +229,14 @@ webnovel-writing-system/
 The system occasionally uses abstract examples to illustrate how a mechanism plays out in practice (e.g., a "protagonist-exclusive information mechanic" could be precognition / mind-reading / a status panel / involuntary information leakage; a "character-exclusive reaction trait" could be a tic, a catchphrase, a change in eye color, etc.). These are all **optional illustrations**, not a prerequisite for using this system, and they don't point to any specific published work — you're free to swap in whatever fits your own worldbuilding. See `EXAMPLE.md` for details.
 
 ## Changelog
+
+### v2.3 (2026-07) — Cross-provider post-draft review
+
+- Review starts only after a complete draft passes machine checks, and the reviewer must come from a different provider than the lead writer.
+- Reader experience and craft/AI-flavor always run; other routes are risk-triggered.
+- Adds claimed coverage, evidence-gated critical defects, root-cause findings caps, the one-third re-review threshold, and a two-round cap.
+- Adds a lightweight consistency sweep every 3 chapters.
+- Adds `PUBLICATION_BOUNDARY.md`, declaring this repository the sole public architecture release and excluding all story content.
 
 ### v2.2 (2026-07) — Mechanism upgrade: technique router + two-stage sealing + state-ledger hardening (validated by two rounds of dual-AI cross-audit)
 
